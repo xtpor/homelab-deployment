@@ -7,13 +7,18 @@ variable "ca_common_name" {
   type = string
 }
 
-output "ca_filename" {
-  value = "${replace(var.ca_common_name, " ", "_")}.crt"
+output "ca_cert" {
+  value = local.ca_cert
+  sensitive = true
 }
 
-output "ca_cert" {
-  value = tls_self_signed_cert.ca.cert_pem
-  sensitive = true
+output "ca_filename" {
+  value = local.ca_filename
+}
+
+locals {
+  ca_cert = tls_self_signed_cert.ca.cert_pem
+  ca_filename = "${replace(var.ca_common_name, " ", "_")}.crt"
 }
 
 # Root CA

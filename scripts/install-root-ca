@@ -12,4 +12,4 @@ ca_cert="$( terraform output -raw ca_cert )"
 echo "$ca_cert" | sudo tee -a "$cert_path" >/dev/null
 sudo update-ca-certificates
 
-echo "Installed the ca certificate at $CERT_PATH"
+echo "Installed the ca certificate at $cert_path"

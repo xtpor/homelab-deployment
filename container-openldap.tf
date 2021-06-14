@@ -22,7 +22,7 @@ output "ldap_config_password" {
 }
 
 output "ldap_serviceaccount_password" {
-  value = random_password.ldap_serviceaccount.result
+  value = local.ldap_serviceaccount_password
   sensitive = true
 }
 
@@ -39,6 +39,9 @@ locals {
     ",",
     [for s in split(".", var.ldap_domain) : "dc=${s}"]
   )
+  ldap_user_base_dn = "ou=Users,${local.ldap_base_dn}"
+  ldap_serviceaccount_dn = "cn=serviceaccount,${local.ldap_base_dn}"
+  ldap_serviceaccount_password = random_password.ldap_serviceaccount.result
 
   container_openldap_name = "openldap"
 }
@@ -116,8 +119,8 @@ resource "docker_container" "openldap" {
     "LDAP_ADMIN_PASSWORD=${random_password.ldap_admin.result}",
     "LDAP_CONFIG_PASSWORD=${random_password.ldap_config.result}",
     "LDAP_READONLY_USER=true",
-    "LDAP_READONLY_USERNAME=serviceaccount",
-    "LDAP_READONLY_USERPASSWORD=${random_password.ldap_serviceaccount.result}",
+    "LDAP_READONLY_USER_USERNAME=serviceaccount",
+    "LDAP_READONLY_USER_PASSWORD=${random_password.ldap_serviceaccount.result}",
     "LDAP_TLS_VERIFY_CLIENT=never",
     "LDAP_TLS_CA_CRT_FILENAME=ldap.crt",
   ]
