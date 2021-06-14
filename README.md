@@ -1,4 +1,4 @@
 
 # Homelab Deployment
 
-- prepare a `terraform.tfvars` file
+![infra graph](./screenshots/graph.png)
