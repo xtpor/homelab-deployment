@@ -6,5 +6,6 @@ root="$( cd "$(dirname "$0")"; cd ..; pwd -P )"
 cd "$root"
 terraform plan -out=tfplan -destroy
 terraform apply tfplan
+sleep 10
 terraform plan -out=tfplan
 terraform apply tfplan
