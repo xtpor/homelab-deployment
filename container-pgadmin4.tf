@@ -31,8 +31,8 @@ resource "docker_container" "pgadmin4" {
   }
 
   upload {
-    content = local.ca_cert
-    file = "/usr/local/share/ca-certificates/${local.ca_filename}"
+    content = module.ca.crt
+    file = "/usr/local/share/ca-certificates/${module.ca.crt_filename}"
   }
 
   env = [
@@ -41,7 +41,7 @@ resource "docker_container" "pgadmin4" {
     "PGADMIN_CONFIG_AUTHENTICATION_SOURCES=['ldap', 'internal']",
     "PGADMIN_CONFIG_LDAP_AUTO_CREATE_USER=True",
     "PGADMIN_CONFIG_LDAP_SERVER_URI='ldaps://${docker_container.openldap.name}'",
-    "PGADMIN_CONFIG_LDAP_CA_CERT_FILE='/usr/local/share/ca-certificates/${local.ca_filename}'",
+    "PGADMIN_CONFIG_LDAP_CA_CERT_FILE='/usr/local/share/ca-certificates/${module.ca.crt_filename}'",
     "PGADMIN_CONFIG_LDAP_USERNAME_ATTRIBUTE='uid'",
     "PGADMIN_CONFIG_LDAP_SEARCH_BASE_DN='${local.ldap_user_base_dn}'",
     "PGADMIN_CONFIG_LDAP_BIND_USER='${local.ldap_serviceaccount_dn}'",

@@ -68,12 +68,12 @@ resource "docker_container" "postgres" {
   }
 
   upload {
-    content = tls_locally_signed_cert.postgres.cert_pem
+    content = module.tls_postgres.crt
     file = "/var/lib/postgresql/server.crt"
   }
 
   upload {
-    content = tls_private_key.postgres.private_key_pem
+    content = module.tls_postgres.key
     file = "/var/lib/postgresql/server.key"
   }
 
@@ -84,37 +84,12 @@ resource "docker_container" "postgres" {
 
 # TLS configurations
 
-resource "tls_private_key" "postgres" {
-  algorithm = "RSA"
-  rsa_bits = 4096
-}
-
-resource "tls_cert_request" "postgres" {
-  key_algorithm = "RSA"
-  private_key_pem = tls_private_key.postgres.private_key_pem
-
-  subject {
-    common_name = local.container_postgres_name
-    organization = var.ca_organization
-  }
-
+module "tls_postgres" {
+  source = "./modules/cert"
   dns_names = [
+    local.container_postgres_name,
     var.postgres_host,
   ]
-}
-
-resource "tls_locally_signed_cert" "postgres" {
-  cert_request_pem   = tls_cert_request.postgres.cert_request_pem
-  ca_key_algorithm   = "RSA"
-  ca_private_key_pem = tls_private_key.ca.private_key_pem
-  ca_cert_pem        = tls_self_signed_cert.ca.cert_pem
-
-  validity_period_hours = 24 * 365
-
-  allowed_uses = [
-    "key_encipherment",
-    "digital_signature",
-    "server_auth",
-    "client_auth",
-  ]
+  ca_crt = module.ca.crt
+  ca_key = module.ca.key
 }

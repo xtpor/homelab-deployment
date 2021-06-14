@@ -36,3 +36,31 @@ provider "docker" {
 resource "docker_network" "default" {
   name = "apps"
 }
+
+
+# TLS related
+
+variable "ca_organization" {
+  type = string
+}
+
+variable "ca_common_name" {
+  type = string
+}
+
+output "ca_cert" {
+  value = module.ca.crt
+  sensitive = true
+}
+
+output "ca_filename" {
+  value = module.ca.crt_filename
+}
+
+# Root CA
+
+module "ca" {
+  source = "./modules/ca"
+  common_name = var.ca_common_name
+  organization = var.ca_organization
+}

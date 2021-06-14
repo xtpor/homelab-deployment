@@ -104,12 +104,12 @@ resource "docker_container" "openldap" {
   }
 
   upload {
-    content = tls_locally_signed_cert.openldap.cert_pem
+    content = module.tls_openldap.crt
     file = "/container/service/slapd/assets/certs/ldap.crt"
   }
 
   upload {
-    content = tls_private_key.openldap.private_key_pem
+    content = module.tls_openldap.key
     file = "/container/service/slapd/assets/certs/ldap.key"
   }
 
@@ -147,37 +147,12 @@ resource "null_resource" "openldap_seeding" {
 
 # TLS configurations
 
-resource "tls_private_key" "openldap" {
-  algorithm = "RSA"
-  rsa_bits = 4096
-}
-
-resource "tls_cert_request" "openldap" {
-  key_algorithm = "RSA"
-  private_key_pem = tls_private_key.openldap.private_key_pem
-
-  subject {
-    common_name = local.container_openldap_name
-    organization = var.ca_organization
-  }
-
+module "tls_openldap" {
+  source = "./modules/cert"
   dns_names = [
+    local.container_openldap_name,
     var.ldap_host,
   ]
-}
-
-resource "tls_locally_signed_cert" "openldap" {
-  cert_request_pem   = tls_cert_request.openldap.cert_request_pem
-  ca_key_algorithm   = "RSA"
-  ca_private_key_pem = tls_private_key.ca.private_key_pem
-  ca_cert_pem        = tls_self_signed_cert.ca.cert_pem
-
-  validity_period_hours = 24 * 365
-
-  allowed_uses = [
-    "key_encipherment",
-    "digital_signature",
-    "server_auth",
-    "client_auth",
-  ]
+  ca_crt = module.ca.crt
+  ca_key = module.ca.key
 }
