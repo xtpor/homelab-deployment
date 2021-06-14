@@ -1,0 +1,24 @@
+
+# a group for users
+dn: ou=Users,${organization_dn}
+objectClass: organizationalunit
+ou: Users
+description: Users
+
+# create few test users
+
+dn: uid=testuser1,ou=Users,${organization_dn}
+objectClass: inetOrgPerson
+cn: Test User1
+sn: Test
+uid: testuser1
+userPassword: testpassword1
+mail: testuser1@example.com
+
+dn: uid=testuser2,ou=Users,${organization_dn}
+objectClass: inetOrgPerson
+cn: Test User2
+sn: Test
+uid: testuser2
+userPassword: testpassword2
+mail: testuser2@example.com

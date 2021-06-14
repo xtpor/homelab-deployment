@@ -1,0 +1,12 @@
+
+# CA config
+ca_organization = "Tintin Ho HomeLab"
+ca_common_name = "Tintin Ho HomeLab Root CA"
+
+# LDAP config
+ldap_organization = "Tintin Ho HomeLab"
+ldap_domain = "tintinho.net"
+ldap_host = "ldap.test.xtpor.tk"
+
+# Docker config
+docker_host = "ssh://root@myhost.com"

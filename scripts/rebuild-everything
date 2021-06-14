@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+root="$( cd "$(dirname "$0")"; cd ..; pwd -P )"
+
+cd "$root"
+terraform plan -out=tfplan -destroy
+terraform apply tfplan
+terraform plan -out=tfplan
+terraform apply tfplan
