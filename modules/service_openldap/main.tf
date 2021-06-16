@@ -107,19 +107,16 @@ resource "random_password" "ldap_serviceaccount" {
 
 # Container
 
-resource "docker_image" "main" {
-  name = "osixia/openldap:1.5.0"
+resource "docker_image" "openldap" {
+  name = "tintinho/openldap:1.5.0"
 }
 
-resource "docker_volume" "openldap_data" {
-}
-
-resource "docker_volume" "openldap_config" {
+resource "docker_volume" "openldap_data_config" {
 }
 
 resource "docker_container" "openldap" {
   name = var.name
-  image = docker_image.main.latest
+  image = docker_image.openldap.latest
 
   networks_advanced {
     name = var.docker_network
@@ -136,13 +133,8 @@ resource "docker_container" "openldap" {
   }
 
   volumes {
-    container_path = "/var/lib/ldap"
-    volume_name = docker_volume.openldap_data.name
-  }
-
-  volumes {
-    container_path = "/etc/ldap/slapd.d"
-    volume_name = docker_volume.openldap_config.name
+    container_path = "/data"
+    volume_name = docker_volume.openldap_data_config.name
   }
 
   upload {
@@ -168,19 +160,19 @@ resource "docker_container" "openldap" {
   ]
 }
 
-resource "null_resource" "openldap_seeding" {
+resource "null_resource" "openldap_seed" {
   triggers = {
-    volume_id = docker_volume.openldap_data.id,
+    volume_id = docker_volume.openldap_data_config.id,
   }
   depends_on = [docker_container.openldap]
 
   provisioner "local-exec" {
-    command = "${path.module}/../../provisioners/setup-ldap.sh"
+    command = "${path.module}/provisioners/setup-ldap.sh"
     environment = {
       URL = "ldaps://${var.ldap_host}"
       BIND_DN = "cn=admin,${local.base_dn}"
       BIND_PASSWORD = nonsensitive(random_password.ldap_admin.result)
-      DATA = templatefile("${path.module}/../../templates/ldap-seed.tpl.ldif", {
+      DATA = templatefile("${path.module}/templates/seed.tpl.ldif", {
         organization_dn = local.base_dn
       })
     }
