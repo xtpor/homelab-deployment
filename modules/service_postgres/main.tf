@@ -1,15 +1,36 @@
 
-variable "postgres_host" {
-  type = string
+terraform {
+  required_providers {
+    docker = {
+      source = "kreuzwerker/docker"
+      version = "2.12.2"
+    }
+
+    random = {
+      source = "hashicorp/random"
+      version = "3.1.0"
+    }
+  }
 }
 
-output "postgres_root_password" {
+variable "docker_host" {
+}
+
+variable "docker_network" {
+}
+
+variable "name" {
+}
+
+variable "tls_crt" {
+}
+
+variable "tls_key" {
+}
+
+output "root_password" {
   value = random_password.postgres_root.result
   sensitive = true
-}
-
-locals {
-  container_postgres_name = "postgres"
 }
 
 # Secrets
@@ -21,6 +42,10 @@ resource "random_password" "postgres_root" {
 
 # Container
 
+provider "docker" {
+  host = var.docker_host
+}
+
 resource "docker_image" "postgres" {
   name = "postgres:13.3"
 }
@@ -29,7 +54,7 @@ resource "docker_volume" "postgres_data" {
 }
 
 resource "docker_container" "postgres" {
-  name = local.container_postgres_name
+  name = var.name
   image = docker_image.postgres.latest
   command = [
     "-c",
@@ -54,7 +79,7 @@ resource "docker_container" "postgres" {
   }
 
   networks_advanced {
-    name = docker_network.default.name
+    name = var.docker_network
   }
 
   ports {
@@ -68,28 +93,16 @@ resource "docker_container" "postgres" {
   }
 
   upload {
-    content = module.tls_postgres.crt
+    content = var.tls_crt
     file = "/var/lib/postgresql/server.crt"
   }
 
   upload {
-    content = module.tls_postgres.key
+    content = var.tls_key
     file = "/var/lib/postgresql/server.key"
   }
 
   env = [
     "POSTGRES_PASSWORD=${random_password.postgres_root.result}",
   ]
-}
-
-# TLS configurations
-
-module "tls_postgres" {
-  source = "./modules/cert"
-  dns_names = [
-    local.container_postgres_name,
-    var.postgres_host,
-  ]
-  ca_crt = module.ca.crt
-  ca_key = module.ca.key
 }

@@ -1,4 +1,33 @@
 
+terraform {
+  required_providers {
+    docker = {
+      source = "kreuzwerker/docker"
+      version = "2.12.2"
+    }
+
+    random = {
+      source = "hashicorp/random"
+      version = "3.1.0"
+    }
+
+    null = {
+      source = "hashicorp/null"
+      version = "3.1.0"
+    }
+  }
+}
+
+variable "docker_host" {
+}
+
+variable "docker_network" {
+}
+
+variable "name" {
+}
+
+
 variable "ldap_organization" {
   type = string
 }
@@ -11,39 +40,52 @@ variable "ldap_host" {
   type = string
 }
 
-output "ldap_admin_password" {
+variable "tls_crt" {
+}
+
+variable "tls_key" {
+  sensitive = true
+}
+
+output "admin_dn" {
+  value = "cn=admin,${local.base_dn}"
+}
+
+output "admin_password" {
   value = random_password.ldap_admin.result
   sensitive = true
 }
 
-output "ldap_config_password" {
+output "config_password" {
   value = random_password.ldap_config.result
   sensitive = true
 }
 
-output "ldap_serviceaccount_password" {
-  value = local.ldap_serviceaccount_password
+output "service_dn" {
+  value = "cn=serviceaccount,${local.base_dn}"
+}
+
+output "service_password" {
+  value = random_password.ldap_serviceaccount.result
   sensitive = true
 }
 
-output "ldap_host" {
-  value = var.ldap_host
+output "search_base_dn" {
+  value = "ou=Users,${local.base_dn}"
 }
 
-output "ldap_base_dn" {
-  value = local.ldap_base_dn
+output "base_dn" {
+  value = local.base_dn
+}
+
+# Container
+
+provider "docker" {
+  host = var.docker_host
 }
 
 locals {
-  ldap_base_dn = join(
-    ",",
-    [for s in split(".", var.ldap_domain) : "dc=${s}"]
-  )
-  ldap_user_base_dn = "ou=Users,${local.ldap_base_dn}"
-  ldap_serviceaccount_dn = "cn=serviceaccount,${local.ldap_base_dn}"
-  ldap_serviceaccount_password = random_password.ldap_serviceaccount.result
-
-  container_openldap_name = "openldap"
+  base_dn = join(",", [for s in split(".", var.ldap_domain) : "dc=${s}"])
 }
 
 # Secrets
@@ -65,7 +107,7 @@ resource "random_password" "ldap_serviceaccount" {
 
 # Container
 
-resource "docker_image" "openldap" {
+resource "docker_image" "main" {
   name = "osixia/openldap:1.5.0"
 }
 
@@ -76,11 +118,11 @@ resource "docker_volume" "openldap_config" {
 }
 
 resource "docker_container" "openldap" {
-  name = local.container_openldap_name
-  image = docker_image.openldap.latest
+  name = var.name
+  image = docker_image.main.latest
 
   networks_advanced {
-    name = docker_network.default.name
+    name = var.docker_network
   }
 
   ports {
@@ -104,12 +146,12 @@ resource "docker_container" "openldap" {
   }
 
   upload {
-    content = module.tls_openldap.crt
+    content = var.tls_crt
     file = "/container/service/slapd/assets/certs/ldap.crt"
   }
 
   upload {
-    content = module.tls_openldap.key
+    content = var.tls_key
     file = "/container/service/slapd/assets/certs/ldap.key"
   }
 
@@ -133,26 +175,15 @@ resource "null_resource" "openldap_seeding" {
   depends_on = [docker_container.openldap]
 
   provisioner "local-exec" {
-    command = "${path.module}/provisioners/setup-ldap.sh"
+    command = "${path.module}/../../provisioners/setup-ldap.sh"
     environment = {
       URL = "ldaps://${var.ldap_host}"
-      BIND_DN = "cn=admin,${local.ldap_base_dn}"
+      BIND_DN = "cn=admin,${local.base_dn}"
       BIND_PASSWORD = nonsensitive(random_password.ldap_admin.result)
-      DATA = templatefile("${path.module}/templates/ldap-seed.tpl.ldif", {
-        organization_dn = local.ldap_base_dn
+      DATA = templatefile("${path.module}/../../templates/ldap-seed.tpl.ldif", {
+        organization_dn = local.base_dn
       })
     }
   }
 }
 
-# TLS configurations
-
-module "tls_openldap" {
-  source = "./modules/cert"
-  dns_names = [
-    local.container_openldap_name,
-    var.ldap_host,
-  ]
-  ca_crt = module.ca.crt
-  ca_key = module.ca.key
-}
