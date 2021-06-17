@@ -21,10 +21,13 @@ terraform {
 variable "docker_host" {
 }
 
-variable "docker_network" {
+variable "container_network" {
 }
 
-variable "name" {
+variable "container_name" {
+}
+
+variable "container_volume" {
 }
 
 
@@ -36,7 +39,7 @@ variable "ldap_domain" {
   type = string
 }
 
-variable "ldap_host" {
+variable "ldap_base_dn" {
   type = string
 }
 
@@ -48,7 +51,7 @@ variable "tls_key" {
 }
 
 output "admin_dn" {
-  value = "cn=admin,${local.base_dn}"
+  value = "cn=admin,${var.ldap_base_dn}"
 }
 
 output "admin_password" {
@@ -62,7 +65,7 @@ output "config_password" {
 }
 
 output "service_dn" {
-  value = "cn=serviceaccount,${local.base_dn}"
+  value = "cn=serviceaccount,${var.ldap_base_dn}"
 }
 
 output "service_password" {
@@ -71,21 +74,13 @@ output "service_password" {
 }
 
 output "search_base_dn" {
-  value = "ou=Users,${local.base_dn}"
-}
-
-output "base_dn" {
-  value = local.base_dn
+  value = "ou=Users,${var.ldap_base_dn}"
 }
 
 # Container
 
 provider "docker" {
   host = var.docker_host
-}
-
-locals {
-  base_dn = join(",", [for s in split(".", var.ldap_domain) : "dc=${s}"])
 }
 
 # Secrets
@@ -111,15 +106,12 @@ resource "docker_image" "openldap" {
   name = "tintinho/openldap:1.5.0"
 }
 
-resource "docker_volume" "openldap_data_config" {
-}
-
 resource "docker_container" "openldap" {
-  name = var.name
+  name = var.container_name
   image = docker_image.openldap.latest
 
   networks_advanced {
-    name = var.docker_network
+    name = var.container_network
   }
 
   ports {
@@ -134,7 +126,7 @@ resource "docker_container" "openldap" {
 
   volumes {
     container_path = "/data"
-    volume_name = docker_volume.openldap_data_config.name
+    volume_name = var.container_volume
   }
 
   upload {
@@ -149,6 +141,7 @@ resource "docker_container" "openldap" {
 
   env = [
     "LDAP_ORGANISATION=${var.ldap_organization}",
+    "LDAP_BASE_DN=${var.ldap_base_dn}",
     "LDAP_DOMAIN=${var.ldap_domain}",
     "LDAP_ADMIN_PASSWORD=${random_password.ldap_admin.result}",
     "LDAP_CONFIG_PASSWORD=${random_password.ldap_config.result}",
@@ -159,23 +152,3 @@ resource "docker_container" "openldap" {
     "LDAP_TLS_CA_CRT_FILENAME=ldap.crt",
   ]
 }
-
-resource "null_resource" "openldap_seed" {
-  triggers = {
-    volume_id = docker_volume.openldap_data_config.id,
-  }
-  depends_on = [docker_container.openldap]
-
-  provisioner "local-exec" {
-    command = "${path.module}/provisioners/setup-ldap.sh"
-    environment = {
-      URL = "ldaps://${var.ldap_host}"
-      BIND_DN = "cn=admin,${local.base_dn}"
-      BIND_PASSWORD = nonsensitive(random_password.ldap_admin.result)
-      DATA = templatefile("${path.module}/templates/seed.tpl.ldif", {
-        organization_dn = local.base_dn
-      })
-    }
-  }
-}
-

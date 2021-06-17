@@ -110,6 +110,10 @@ variable "ldap_domain" {
   type = string
 }
 
+variable "ldap_base_dn" {
+  type = string
+}
+
 variable "ldap_host" {
   type = string
 }
@@ -133,23 +137,35 @@ output "ldap_host" {
   value = var.ldap_host
 }
 
-output "ldap_base_dn" {
-  value = module.service_openldap.base_dn
-}
-
 # Container
+
+resource "docker_volume" "openldap_database" {
+}
 
 module "service_openldap" {
   source = "./modules/service_openldap"
 
   docker_host = var.docker_host
-  docker_network = docker_network.default.name
-  name = "openldap"
+  container_network = docker_network.default.name
+  container_name = "openldap"
+  container_volume = docker_volume.openldap_database.name
+
   ldap_organization = var.ldap_organization
   ldap_domain = var.ldap_domain
-  ldap_host = var.ldap_host
+  ldap_base_dn = var.ldap_base_dn
   tls_crt = module.tls_openldap.crt
   tls_key = module.tls_openldap.key
+}
+
+module "schema_openldap" {
+  source = "./modules/schema_openldap"
+
+  hostname = var.ldap_host
+  port = 636
+  tls = true
+  base_dn = var.ldap_base_dn
+  bind_dn = module.service_openldap.admin_dn
+  bind_password = module.service_openldap.admin_password
 }
 
 # TLS configurations
