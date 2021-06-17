@@ -59,6 +59,10 @@ output "admin_password" {
   sensitive = true
 }
 
+output "config_dn" {
+  value = "cn=config,${var.ldap_base_dn}"
+}
+
 output "config_password" {
   value = random_password.ldap_config.result
   sensitive = true
@@ -78,10 +82,6 @@ output "search_base_dn" {
 }
 
 # Container
-
-provider "docker" {
-  host = var.docker_host
-}
 
 # Secrets
 

@@ -46,10 +46,6 @@ resource "random_password" "admin" {
 
 # Container
 
-provider "docker" {
-  host = var.docker_host
-}
-
 resource "docker_image" "main" {
   name = "dpage/pgadmin4:5.3"
 }

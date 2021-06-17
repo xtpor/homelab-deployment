@@ -26,6 +26,10 @@ variable "bind_dn" {
 variable "bind_password" {
 }
 
+output "search_base_dn" {
+  value = ldap_object.users.dn
+}
+
 
 provider "ldap" {
   ldap_host = var.hostname

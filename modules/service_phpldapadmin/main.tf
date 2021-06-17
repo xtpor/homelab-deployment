@@ -11,10 +11,10 @@ terraform {
 variable "docker_host" {
 }
 
-variable "docker_network" {
+variable "container_network" {
 }
 
-variable "name" {
+variable "container_name" {
 }
 
 variable "ldap_host" {
@@ -26,20 +26,16 @@ output "port" {
 
 # Resources
 
-provider "docker" {
-  host = var.docker_host
-}
-
 resource "docker_image" "service" {
   name = "osixia/phpldapadmin:0.9.0"
 }
 
 resource "docker_container" "service" {
-  name = var.name
+  name = var.container_name
   image = docker_image.service.latest
 
   networks_advanced {
-    name = var.docker_network
+    name = var.container_network
   }
 
   # TODO: please remove this

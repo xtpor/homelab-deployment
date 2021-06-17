@@ -16,10 +16,13 @@ terraform {
 variable "docker_host" {
 }
 
-variable "docker_network" {
+variable "container_network" {
 }
 
-variable "name" {
+variable "container_name" {
+}
+
+variable "container_volume" {
 }
 
 variable "tls_crt" {
@@ -42,19 +45,12 @@ resource "random_password" "postgres_root" {
 
 # Container
 
-provider "docker" {
-  host = var.docker_host
-}
-
 resource "docker_image" "postgres" {
-  name = "postgres:13.3"
-}
-
-resource "docker_volume" "postgres_data" {
+  name = "tintinho/postgres:13.3"
 }
 
 resource "docker_container" "postgres" {
-  name = var.name
+  name = var.container_name
   image = docker_image.postgres.latest
   command = [
     "-c",
@@ -65,21 +61,8 @@ resource "docker_container" "postgres" {
     "ssl_key_file=/var/lib/postgresql/server.key",
   ]
 
-  # Fixes the permission of the private key before starting the server
-  entrypoint = ["/bin/sh", "/docker-entrypoint-new.sh"]
-
-  upload {
-    content = <<-EOT
-    set -eu
-    chmod 640 /var/lib/postgresql/server.key
-    chown root:postgres /var/lib/postgresql/server.key
-    exec /docker-entrypoint.sh "$@"
-    EOT
-    file = "/docker-entrypoint-new.sh"
-  }
-
   networks_advanced {
-    name = var.docker_network
+    name = var.container_network
   }
 
   ports {
@@ -89,7 +72,7 @@ resource "docker_container" "postgres" {
 
   volumes {
     container_path = "/var/lib/postgresql/data"
-    volume_name = docker_volume.postgres_data.name
+    volume_name = var.container_volume
   }
 
   upload {

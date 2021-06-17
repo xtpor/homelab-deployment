@@ -1,0 +1,42 @@
+${jsonencode({
+  apps = {
+    http = {
+      servers = {
+        srv0 = {
+          listen = [":443"]
+          routes = [
+            for entry in entries :
+            {
+              match = [
+                { host = [ entry.domain ] }
+              ]
+              handle = [
+                {
+                  handler = "reverse_proxy"
+                  upstreams = [ { dial = entry.gateway } ]
+                }
+              ],
+              terminal = true
+            }
+          ]
+        }
+      }
+    }
+    tls = {
+      automation = {
+        policies = [
+          {
+            subjects = [for entry in entries : entry.domain]
+            issuers = [
+              {
+                module = "zerossl"
+                ca = "https://acme.zerossl.com/v2/DV90"
+                api_key = zerossl_api_key
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+})}
