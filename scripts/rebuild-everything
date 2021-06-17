@@ -4,8 +4,28 @@ IFS=$'\n\t'
 root="$( cd "$(dirname "$0")"; cd ..; pwd -P )"
 
 cd "$root"
-terraform plan -out=tfplan -destroy
+
+terraform plan -out=tfplan -destroy -target=module.phase3
 terraform apply tfplan
 sleep 10
-terraform plan -out=tfplan
+
+terraform plan -out=tfplan -destroy -target=module.phase2
 terraform apply tfplan
+sleep 10
+
+terraform plan -out=tfplan -destroy -target=module.phase1
+terraform apply tfplan
+sleep 10
+
+
+terraform plan -out=tfplan -target=module.phase1
+terraform apply tfplan
+sleep 10
+
+terraform plan -out=tfplan -target=module.phase2
+terraform apply tfplan
+sleep 10
+
+terraform plan -out=tfplan -target=module.phase3
+terraform apply tfplan
+sleep 10
